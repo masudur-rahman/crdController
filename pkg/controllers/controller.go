@@ -30,27 +30,27 @@ type Controller struct {
 
 	deploymentsLister	appslisters.DeploymentLister
 	deploymentsSynced	cache.InformerSynced
-	foosLister 			listers.FooLister
-	foosSynced			cache.InformerSynced
+	customLister 		listers.CustomDeploymentLister
+	customSynced		cache.InformerSynced
 
 	workqueue	workqueue.RateLimitingInterface
 }
 
 
-func NewController(kubeclientset kubernetes.Interface, appsclientset clientset.Interface, deploymentInformer appsinformers.DeploymentInformer, fooInformer informers.FooInformer) *Controller {
+func NewController(kubeclientset kubernetes.Interface, appsclientset clientset.Interface, deploymentInformer appsinformers.DeploymentInformer, customInformer informers.CustomDeploymentInformer) *Controller {
 	log.Println("Creating NewController")
 	controller := &Controller{
 		kubeclientset: 		kubeclientset,
 		appsclientset: 		appsclientset,
 		deploymentsLister: 	deploymentInformer.Lister(),
 		deploymentsSynced: 	deploymentInformer.Informer().HasSynced,
-		foosLister: 		fooInformer.Lister(),
-		foosSynced: 		fooInformer.Informer().HasSynced,
+		customLister: 		customInformer.Lister(),
+		customSynced: 		customInformer.Informer().HasSynced,
 
-		workqueue: 			workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "Foos"),
+		workqueue: 			workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "CustomDeployments"),
 	}
 
-	fooInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+	customInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: controller.enqueueFoo,
 		UpdateFunc: func(old, new interface{}) {
 			controller.enqueueFoo(new)
@@ -84,7 +84,7 @@ func (c *Controller) Run(threadiness int, stopCh <- chan struct{}) error {
 	log.Println("Starting Foo Controller")
 
 	log.Println("Waiting for informer caches to sync")
-	if ok := cache.WaitForCacheSync(stopCh, c.deploymentsSynced, c.foosSynced); !ok {
+	if ok := cache.WaitForCacheSync(stopCh, c.deploymentsSynced, c.customSynced); !ok {
 		//log.Println("something")
 		return fmt.Errorf("Failed to wait for caches to sync")
 	}
@@ -159,16 +159,16 @@ func (c *Controller) syncHandler(key string) error {
 		utilruntime.HandleError(fmt.Errorf("Invalid reource key: %s", key))
 	}
 
-	foo, err := c.foosLister.Foos(namespace).Get(name)
+	customdeploy, err := c.customLister.CustomDeployments(namespace).Get(name)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			utilruntime.HandleError(fmt.Errorf("foo '%s' in workqueue no longler exists", key))
+			utilruntime.HandleError(fmt.Errorf("customdeploy '%s' in workqueue no longler exists", key))
 			return nil
 		}
 		return err
 	}
 
-	deploymentName := foo.Spec.DeploymentName
+	deploymentName := customdeploy.Spec.DeploymentName
 	if deploymentName == "" {
 		utilruntime.HandleError(fmt.Errorf("%s: deployment name must be specified", key))
 	}
@@ -176,23 +176,23 @@ func (c *Controller) syncHandler(key string) error {
 		return err
 	}
 
-	deployment, err := c.deploymentsLister.Deployments(foo.Namespace).Get(deploymentName)
+	deployment, err := c.deploymentsLister.Deployments(customdeploy.Namespace).Get(deploymentName)
 	if errors.IsNotFound(err) {
-		deployment, err = c.kubeclientset.AppsV1().Deployments(foo.Namespace).Create(newDeployment(foo))
+		deployment, err = c.kubeclientset.AppsV1().Deployments(customdeploy.Namespace).Create(newDeployment(customdeploy))
 	}
 	if err != nil {
 		return err
 	}
 
-	if foo.Spec.Replicas != nil && *foo.Spec.Replicas != *deployment.Spec.Replicas {
-		log.Printf("Foo %s replicas : %d, deployment replicas: %d", name, *foo.Spec.Replicas, *deployment.Spec.Replicas)
-		deployment, err = c.kubeclientset.Apps().Deployments(foo.Namespace).Update(newDeployment(foo))
+	if customdeploy.Spec.Replicas != nil && *customdeploy.Spec.Replicas != *deployment.Spec.Replicas {
+		log.Printf("Foo %s replicas : %d, deployment replicas: %d", name, *customdeploy.Spec.Replicas, *deployment.Spec.Replicas)
+		deployment, err = c.kubeclientset.Apps().Deployments(customdeploy.Namespace).Update(newDeployment(customdeploy))
 	}
 	if err != nil {
 		return err
 	}
 
-	err = c.updateFooStatus(foo, deployment)
+	err = c.updateFooStatus(customdeploy, deployment)
 	if err != nil {
 		return err
 	}
@@ -200,12 +200,12 @@ func (c *Controller) syncHandler(key string) error {
 	return nil
 }
 
-func (c *Controller) updateFooStatus(foo *crdv1beta1.Foo, deployment *appsv1.Deployment) error {
-	log.Println("Updating fooStatus")
-	fooCopy := foo.DeepCopy()
-	fooCopy.Status.AvailableReplicas = deployment.Status.AvailableReplicas
+func (c *Controller) updateFooStatus(customdeploy *crdv1beta1.CustomDeployment, deployment *appsv1.Deployment) error {
+	log.Println("Updating customdeployStatus")
+	customCopy := customdeploy.DeepCopy()
+	customCopy.Status.AvailableReplicas = deployment.Status.AvailableReplicas
 
-	_, err := c.appsclientset.ControllerV1beta1().Foos(foo.Namespace).Update(fooCopy)
+	_, err := c.appsclientset.ControllerV1beta1().CustomDeployments(customdeploy.Namespace).Update(customCopy)
 	return err
 }
 
@@ -219,7 +219,7 @@ func (c *Controller) enqueueFoo(obj interface{}){
 	}
 	c.workqueue.AddRateLimited(key)
 
-	log.Println("Foo Object enqueued")
+	log.Println("CustomDeployment enqueued")
 }
 
 func (c *Controller) handleObject(obj interface{}) {
@@ -248,39 +248,39 @@ func (c *Controller) handleObject(obj interface{}) {
 		if ownerRef.Kind != "Foo" {
 			return
 		}
-		foo, err := c.foosLister.Foos(object.GetNamespace()).Get(ownerRef.Name)
+		customdeploy, err := c.customLister.CustomDeployments(object.GetNamespace()).Get(ownerRef.Name)
 		if err != nil {
-			log.Println("ignoring orphaned object '%s' of foo '%s'", object.GetSelfLink(), ownerRef.Name)
+			log.Println("ignoring orphaned object '%s' of customdeploy '%s'", object.GetSelfLink(), ownerRef.Name)
 		}
 
-		log.Println("Re-enqueuing Foo Object")
+		log.Println("Re-enqueuing CustomDeployment")
 
-		c.enqueueFoo(foo)
+		c.enqueueFoo(customdeploy)
 		return
 	}
 
 }
 
-func newDeployment(foo *crdv1beta1.Foo) *appsv1.Deployment {
+func newDeployment(customdeploy *crdv1beta1.CustomDeployment) *appsv1.Deployment {
 	log.Println("New Deployment")
 	labels := map[string]string{
-		"app"		: "nginx",
-		"controller": foo.Name,
+		"app"		: "appscode",
+		"controller": customdeploy.Name,
 	}
 	return &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: 		foo.Spec.DeploymentName,
-			Namespace:	foo.Namespace,
+			Name: 		customdeploy.Spec.DeploymentName,
+			Namespace:	customdeploy.Namespace,
 			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(foo, schema.GroupVersionKind{
+				*metav1.NewControllerRef(customdeploy, schema.GroupVersionKind{
 					Group: 		crdv1beta1.SchemeGroupVersion.Group,
 					Version:	crdv1beta1.SchemeGroupVersion.Version,
-					Kind: 		"Foo",
+					Kind: 		"CustomDeployment",
 				}),
 			},
 		},
 		Spec: appsv1.DeploymentSpec{
-			Replicas: foo.Spec.Replicas,
+			Replicas: customdeploy.Spec.Replicas,
 			Selector: &metav1.LabelSelector{
 				MatchLabels: labels,
 			},
@@ -291,8 +291,8 @@ func newDeployment(foo *crdv1beta1.Foo) *appsv1.Deployment {
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
 						{
-							Name: "nginx",
-							Image: "nginx:latest",
+							Name: "appscode",
+							Image: "masudjuly02/appscodeserver",
 						},
 					},
 				},

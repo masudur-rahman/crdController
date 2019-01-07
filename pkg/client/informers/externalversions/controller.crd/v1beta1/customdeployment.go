@@ -31,59 +31,59 @@ import (
 	cache "k8s.io/client-go/tools/cache"
 )
 
-// FooInformer provides access to a shared informer and lister for
-// Foos.
-type FooInformer interface {
+// CustomDeploymentInformer provides access to a shared informer and lister for
+// CustomDeployments.
+type CustomDeploymentInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1beta1.FooLister
+	Lister() v1beta1.CustomDeploymentLister
 }
 
-type fooInformer struct {
+type customDeploymentInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
 	tweakListOptions internalinterfaces.TweakListOptionsFunc
 	namespace        string
 }
 
-// NewFooInformer constructs a new informer for Foo type.
+// NewCustomDeploymentInformer constructs a new informer for CustomDeployment type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewFooInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
-	return NewFilteredFooInformer(client, namespace, resyncPeriod, indexers, nil)
+func NewCustomDeploymentInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
+	return NewFilteredCustomDeploymentInformer(client, namespace, resyncPeriod, indexers, nil)
 }
 
-// NewFilteredFooInformer constructs a new informer for Foo type.
+// NewFilteredCustomDeploymentInformer constructs a new informer for CustomDeployment type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewFilteredFooInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
+func NewFilteredCustomDeploymentInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.ControllerV1beta1().Foos(namespace).List(options)
+				return client.ControllerV1beta1().CustomDeployments(namespace).List(options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.ControllerV1beta1().Foos(namespace).Watch(options)
+				return client.ControllerV1beta1().CustomDeployments(namespace).Watch(options)
 			},
 		},
-		&controllercrdv1beta1.Foo{},
+		&controllercrdv1beta1.CustomDeployment{},
 		resyncPeriod,
 		indexers,
 	)
 }
 
-func (f *fooInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewFilteredFooInformer(client, f.namespace, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
+func (f *customDeploymentInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
+	return NewFilteredCustomDeploymentInformer(client, f.namespace, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
 }
 
-func (f *fooInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&controllercrdv1beta1.Foo{}, f.defaultInformer)
+func (f *customDeploymentInformer) Informer() cache.SharedIndexInformer {
+	return f.factory.InformerFor(&controllercrdv1beta1.CustomDeployment{}, f.defaultInformer)
 }
 
-func (f *fooInformer) Lister() v1beta1.FooLister {
-	return v1beta1.NewFooLister(f.Informer().GetIndexer())
+func (f *customDeploymentInformer) Lister() v1beta1.CustomDeploymentLister {
+	return v1beta1.NewCustomDeploymentLister(f.Informer().GetIndexer())
 }

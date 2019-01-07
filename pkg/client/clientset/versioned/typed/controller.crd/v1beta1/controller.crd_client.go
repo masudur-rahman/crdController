@@ -27,7 +27,7 @@ import (
 
 type ControllerV1beta1Interface interface {
 	RESTClient() rest.Interface
-	FoosGetter
+	CustomDeploymentsGetter
 }
 
 // ControllerV1beta1Client is used to interact with features provided by the controller.crd group.
@@ -35,8 +35,8 @@ type ControllerV1beta1Client struct {
 	restClient rest.Interface
 }
 
-func (c *ControllerV1beta1Client) Foos(namespace string) FooInterface {
-	return newFoos(c, namespace)
+func (c *ControllerV1beta1Client) CustomDeployments(namespace string) CustomDeploymentInterface {
+	return newCustomDeployments(c, namespace)
 }
 
 // NewForConfig creates a new ControllerV1beta1Client for the given config.

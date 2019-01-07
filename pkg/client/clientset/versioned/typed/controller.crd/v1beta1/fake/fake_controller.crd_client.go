@@ -28,8 +28,8 @@ type FakeControllerV1beta1 struct {
 	*testing.Fake
 }
 
-func (c *FakeControllerV1beta1) Foos(namespace string) v1beta1.FooInterface {
-	return &FakeFoos{c, namespace}
+func (c *FakeControllerV1beta1) CustomDeployments(namespace string) v1beta1.CustomDeploymentInterface {
+	return &FakeCustomDeployments{c, namespace}
 }
 
 // RESTClient returns a RESTClient that is used to communicate

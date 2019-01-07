@@ -31,7 +31,7 @@ func main() {
 
 	controller := controllers.NewController(kubeclient, appsclient,
 		kubeInformerFactory.Apps().V1().Deployments(),
-		appsInformerFactory.Controller().V1beta1().Foos())
+		appsInformerFactory.Controller().V1beta1().CustomDeployments())
 
 	kubeInformerFactory.Start(stopCh)
 	appsInformerFactory.Start(stopCh)

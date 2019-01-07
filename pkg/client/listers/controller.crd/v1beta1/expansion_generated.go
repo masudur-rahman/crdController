@@ -18,10 +18,10 @@ limitations under the License.
 
 package v1beta1
 
-// FooListerExpansion allows custom methods to be added to
-// FooLister.
-type FooListerExpansion interface{}
+// CustomDeploymentListerExpansion allows custom methods to be added to
+// CustomDeploymentLister.
+type CustomDeploymentListerExpansion interface{}
 
-// FooNamespaceListerExpansion allows custom methods to be added to
-// FooNamespaceLister.
-type FooNamespaceListerExpansion interface{}
+// CustomDeploymentNamespaceListerExpansion allows custom methods to be added to
+// CustomDeploymentNamespaceLister.
+type CustomDeploymentNamespaceListerExpansion interface{}
