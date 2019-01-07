@@ -1,0 +1,19 @@
+package: github.com/masudur-rahman/crdController
+
+import:
+    -   package: k8s.io/code-generator
+    -   package: k8s.io/gengo/args
+    -   package: golang.org/x/tools/imports
+    -   package: k8s.io/klog
+    -   package: k8s.io/client-go
+        subpackages:
+            - kubernetes
+            - tools/clientcmd
+    #    -   package: github.com/tamalshaha/go-onliners
+    -   package: k8s.io/apimachinery
+    -   package: k8s.io/api
+        subpackages:
+            - apps/v1
+            - core/v1
+            - extensions/v1beta1
+    -   package: k8s.io/apiextensions-apiserver
