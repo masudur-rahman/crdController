@@ -51,9 +51,9 @@ func NewController(kubeclientset kubernetes.Interface, appsclientset clientset.I
 	}
 
 	customInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: controller.enqueueFoo,
+		AddFunc: controller.enqueueCustomDeploy,
 		UpdateFunc: func(old, new interface{}) {
-			controller.enqueueFoo(new)
+			controller.enqueueCustomDeploy(new)
 		},
 	})
 	deploymentInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -81,7 +81,7 @@ func (c *Controller) Run(threadiness int, stopCh <- chan struct{}) error {
 	defer utilruntime.HandleCrash()
 	defer c.workqueue.ShutDown()
 
-	log.Println("Starting Foo Controller")
+	log.Println("Starting CustomDeploy Controller")
 
 	log.Println("Waiting for informer caches to sync")
 	if ok := cache.WaitForCacheSync(stopCh, c.deploymentsSynced, c.customSynced); !ok {
@@ -185,14 +185,14 @@ func (c *Controller) syncHandler(key string) error {
 	}
 
 	if customdeploy.Spec.Replicas != nil && *customdeploy.Spec.Replicas != *deployment.Spec.Replicas {
-		log.Printf("Foo %s replicas : %d, deployment replicas: %d", name, *customdeploy.Spec.Replicas, *deployment.Spec.Replicas)
+		log.Printf("CustomDeploy %s replicas : %d, deployment replicas: %d\n", name, *customdeploy.Spec.Replicas, *deployment.Spec.Replicas)
 		deployment, err = c.kubeclientset.Apps().Deployments(customdeploy.Namespace).Update(newDeployment(customdeploy))
 	}
 	if err != nil {
 		return err
 	}
 
-	err = c.updateFooStatus(customdeploy, deployment)
+	err = c.updateCustomDeployStatus(customdeploy, deployment)
 	if err != nil {
 		return err
 	}
@@ -200,7 +200,7 @@ func (c *Controller) syncHandler(key string) error {
 	return nil
 }
 
-func (c *Controller) updateFooStatus(customdeploy *crdv1beta1.CustomDeployment, deployment *appsv1.Deployment) error {
+func (c *Controller) updateCustomDeployStatus(customdeploy *crdv1beta1.CustomDeployment, deployment *appsv1.Deployment) error {
 	log.Println("Updating customdeployStatus")
 	customCopy := customdeploy.DeepCopy()
 	customCopy.Status.AvailableReplicas = deployment.Status.AvailableReplicas
@@ -209,9 +209,9 @@ func (c *Controller) updateFooStatus(customdeploy *crdv1beta1.CustomDeployment, 
 	return err
 }
 
-func (c *Controller) enqueueFoo(obj interface{}){
+func (c *Controller) enqueueCustomDeploy(obj interface{}){
 	var key string
-	var err error
+	var err error 
 
 	if key, err = cache.MetaNamespaceKeyFunc(obj); err != nil {
 		utilruntime.HandleError(err)
@@ -242,20 +242,20 @@ func (c *Controller) handleObject(obj interface{}) {
 		log.Println("Processing object: %s", object.GetName())
 	}
 	log.Println("handleObject -2")
-	log.Println("Processing object: %s", object.GetName())
+	log.Printf("Processing object: %s\n", object.GetName())
 
 	if ownerRef := metav1.GetControllerOf(object); ownerRef != nil {
-		if ownerRef.Kind != "Foo" {
+		if ownerRef.Kind != "CustomDeploy" {
 			return
 		}
 		customdeploy, err := c.customLister.CustomDeployments(object.GetNamespace()).Get(ownerRef.Name)
 		if err != nil {
-			log.Println("ignoring orphaned object '%s' of customdeploy '%s'", object.GetSelfLink(), ownerRef.Name)
+			log.Printf("ignoring orphaned object '%s' of customdeploy '%s'\n", object.GetSelfLink(), ownerRef.Name)
 		}
 
 		log.Println("Re-enqueuing CustomDeployment")
 
-		c.enqueueFoo(customdeploy)
+		c.enqueueCustomDeploy(customdeploy)
 		return
 	}
 
